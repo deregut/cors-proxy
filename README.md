@@ -1,11 +1,10 @@
 # Netlify CORS Proxy
 
-![Docker Image](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/docker.yml/badge.svg)
+![Docker Image](https://github.com/transfermer/cors-proxy/actions/workflows/docker.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
-<!-- After pushing to your GitHub repo, replace YOUR_USERNAME / YOUR_REPO above
-     with your actual account and repository name so the build badge resolves.
-     (The license badge is static and works as-is.) -->
+<!-- Build badge points at the docker.yml workflow in transfermer/cors-proxy.
+     The license badge is static. -->
 
 A minimal, self-hosted CORS proxy you can deploy to Netlify in seconds.
 
