@@ -1,0 +1,20 @@
+# Cloudflare Workers configuration
+# Docs: https://developers.cloudflare.com/workers/wrangler/
+
+name = "cors-proxy"
+main = "src/worker.js"
+compatibility_date = "2024-09-23"
+# Node.js compatibility so the shared lib/proxy.js (which uses Buffer) runs
+# unchanged in the Worker runtime.
+compatibility_flags = ["nodejs_compat"]
+
+# Serve the SHARED web UI (public/index.html) from the edge as static assets.
+# Using a binding makes the Worker the entry point for every request; the
+# Worker handles /api/proxy and delegates all other routes to env.ASSETS.
+# This keeps ONE source of truth for the UI across Netlify / Docker / Cloudflare.
+[assets]
+  directory = "./public"
+  binding = "ASSETS"
+
+# No KV / Durable Objects / secrets are required — this is a stateless proxy.
+# Free tier: 100,000 requests/day.

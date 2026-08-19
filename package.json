@@ -1,25 +1,31 @@
 {
   "name": "cors-proxy",
   "version": "1.0.0",
-  "description": "Minimal self-hostable CORS proxy with a web UI. Deploys to Netlify; also runs standalone via Node or Docker.",
+  "description": "Minimal self-hostable CORS proxy with a web UI. Deploys to Netlify, Cloudflare Workers (free tier), or standalone via Node / Docker.",
   "private": true,
   "type": "module",
   "main": "server.js",
   "scripts": {
     "dev": "netlify dev",
     "start": "node server.js",
-    "deploy": "netlify deploy"
+    "deploy": "netlify deploy",
+    "dev:workers": "wrangler dev",
+    "deploy:workers": "wrangler deploy",
+    "tail:workers": "wrangler tail"
   },
   "engines": {
     "node": ">=18"
   },
   "devDependencies": {
-    "netlify": "^17.0.0"
+    "netlify": "^17.0.0",
+    "wrangler": "^4.0.0"
   },
   "keywords": [
     "cors",
     "proxy",
     "netlify",
+    "cloudflare",
+    "workers",
     "serverless",
     "docker"
   ],

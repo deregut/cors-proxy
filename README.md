@@ -6,7 +6,9 @@
 <!-- Build badge points at the docker.yml workflow in transfermer/cors-proxy.
      The license badge is static. -->
 
-A minimal, self-hosted CORS proxy you can deploy to Netlify in seconds.
+A minimal, self-hosted CORS proxy you can deploy to **Cloudflare Workers (free tier)**, **Netlify**, or self-host via **Docker** / Node in seconds.
+
+All three backends share the **same web UI** (`public/index.html`) and the **same proxy logic** (`lib/proxy.js`), so behavior — SSRF guard, 10 MB cap, CORS headers — is identical wherever you deploy.
 
 - **`netlify/functions/proxy.js`** – the serverless function. It fetches any
   `http(s)` URL on the server and returns the bytes to the browser with
@@ -35,7 +37,8 @@ raised. The function is the one crossing the origin boundary server-side.
 ```
 cors-proxy/
 ├── netlify.toml
-├── package.json              # scripts: dev / start / deploy
+├── wrangler.toml             # Cloudflare Workers config (assets → public/)
+├── package.json              # scripts: dev / start / deploy / dev:workers / deploy:workers
 ├── Dockerfile                # self-host as a single container
 ├── docker-compose.yml        # one-command local run (build + up + healthcheck)
 ├── .env.example              # env template — copy to .env
@@ -46,9 +49,11 @@ cors-proxy/
 │   └── workflows/docker.yml  # CI: build + push the image to ghcr.io
 ├── server.js                 # standalone Node server (Docker / self-host)
 ├── lib/
-│   └── proxy.js              # shared proxy logic (Netlify + server both use it)
+│   └── proxy.js              # shared proxy logic (Netlify + server + Cloudflare all use it)
 ├── public/
-│   └── index.html            # web UI
+│   └── index.html            # web UI (shared by every backend)
+├── src/
+│   └── worker.js             # Cloudflare Worker (thin adapter over lib/proxy.js)
 └── netlify/
     └── functions/
         └── proxy.js          # Netlify function (thin adapter over lib/proxy.js)
@@ -56,11 +61,14 @@ cors-proxy/
 
 ## Scripts
 
-| Command             | What it does                                              |
-| ------------------- | --------------------------------------------------------- |
-| `npm run dev`       | Run locally with the Netlify CLI (tests the function).    |
-| `npm run start`     | Run the standalone server (same code Docker uses), :3000. |
-| `npm run deploy`    | Deploy to Netlify.                                        |
+| Command              | What it does                                                  |
+| -------------------- | ------------------------------------------------------------- |
+| `npm run dev`        | Run locally with the Netlify CLI (tests the function).        |
+| `npm run start`      | Run the standalone server (same code Docker uses), :3000.     |
+| `npm run deploy`     | Deploy to Netlify.                                            |
+| `npm run dev:workers`| Run the Cloudflare Worker locally (`wrangler dev`, :8787).    |
+| `npm run deploy:workers` | Deploy the Cloudflare Worker (`wrangler deploy`).          |
+| `npm run tail:workers`   | Tail live Worker logs (`wrangler tail`).                   |
 
 The standalone server (`server.js`) uses **no runtime dependencies** — only
 Node 18+ built-ins (`http` + global `fetch`). `netlify` is a devDependency,
@@ -162,6 +170,52 @@ root, and the proxy endpoint is:
 ```
 GET/POST /api/proxy?url=<target>&method=GET
 ```
+
+## Deploy to Cloudflare Workers (free tier)
+
+The Worker is a thin adapter over the same `lib/proxy.js` (identical guards and
+limits), and it serves the **same** `public/index.html` UI as static assets. No
+build step, no runtime dependencies.
+
+1. **Log in** (browser OAuth, or set `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`):
+   ```bash
+   npm install            # installs wrangler (devDependency)
+   npx wrangler login
+   ```
+
+2. **Run locally** (optional, verifies it bundles + proxies):
+   ```bash
+   npm run dev:workers    # → http://localhost:8787  (UI at /, API at /api/proxy)
+   ```
+
+3. **Deploy**:
+   ```bash
+   npm run deploy:workers
+   ```
+
+   You'll get a URL like:
+   ```
+   https://cors-proxy.<your-subdomain>.workers.dev
+   ```
+   - UI:      `https://<that-url>/`
+   - API:     `https://<that-url>/api/proxy?url=<target>&method=GET`
+
+   To pin a **custom domain**, run:
+   ```bash
+   npx wrangler deploy --route yourproxy.example.com
+   ```
+
+### Free-tier limits (Workers)
+
+| Resource       | Free tier            |
+| -------------- | -------------------- |
+| Requests / day | 100,000              |
+| CPU            | 10 ms per invocation |
+| Memory         | 128 MB               |
+| Response cap   | 10 MB (enforced by `lib/proxy.js`) |
+
+> The 100k/day request cap is a natural rate limit. For heavy/public use,
+> consider a paid Workers plan or add an auth check (see Safety notes).
 
 ## Using the endpoint
 
