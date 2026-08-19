@@ -5,10 +5,12 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy manifest first and install runtime deps only (a no-op today, but keeps
-# the build valid and forward-compatible if you add `dependencies` later).
+# No runtime dependencies: the app uses only Node.js built-ins (node:http,
+# node:fs, node:path, node:url) and the global fetch (Node 18+). There is
+# nothing to `npm install`, so we skip it entirely — an install step here was
+# the source of the build failure. If you later add entries to `dependencies`
+# in package.json, commit a package-lock.json and switch to `RUN npm ci`.
 COPY package.json ./
-RUN npm install --omit=dev
 
 # Application code: shared logic, the standalone server, and the web UI.
 COPY lib ./lib
