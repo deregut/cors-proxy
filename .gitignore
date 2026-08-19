@@ -1,0 +1,33 @@
+# ---- Dependencies ----
+node_modules/
+
+# ---- Environment variables ----
+# Ignore the real env files; keep the template tracked.
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ---- Logs ----
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---- Build / test output ----
+dist/
+build/
+coverage/
+
+# ---- Netlify local dev artifacts ----
+.netlify/
+
+# ---- Local archives ----
+cors-proxy.zip
+cors-proxy.tar.gz
+
+# ---- OS / editor cruft ----
+.DS_Store
+Thumbs.db
+*.swp
+.idea/

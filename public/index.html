@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Netlify CORS 跨域代理</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --panel2: #273449;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent2: #0ea5e9;
+      --ok: #4ade80;
+      --err: #f87171;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+        "PingFang TC", "Microsoft JhengHei", "Heiti TC", "Noto Sans TC", sans-serif;
+      background: linear-gradient(160deg, #0b1220 0%, #0f172a 60%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 32px 18px 60px; }
+    h1 { font-size: 24px; margin: 0 0 4px; }
+    .sub { color: var(--muted); font-size: 14px; margin: 0 0 22px; line-height: 1.6; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+    label { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 6px; }
+    label:first-of-type { margin-top: 0; }
+    input[type=text], textarea, select {
+      width: 100%;
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+    }
+    input[type=text]:focus, textarea:focus, select:focus { border-color: var(--accent); }
+    textarea { min-height: 84px; resize: vertical; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row > div { flex: 1; min-width: 140px; }
+    .actions { margin-top: 18px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    button {
+      background: var(--accent2);
+      color: white;
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: var(--accent); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .meta { font-size: 13px; color: var(--muted); }
+    .status { font-weight: 600; }
+    .status.ok { color: var(--ok); }
+    .status.err { color: var(--err); }
+    pre#out {
+      margin: 18px 0 0;
+      background: #0b1220;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 460px;
+      overflow: auto;
+      color: #dbeafe;
+    }
+    #media { margin-top: 16px; }
+    #media img, #media video { max-width: 100%; border-radius: 10px; border: 1px solid var(--border); }
+    .foot { margin-top: 18px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    code { background: #0b1220; padding: 2px 6px; border-radius: 6px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Netlify CORS 跨域代理</h1>
+    <p class="sub">輸入任一 <code>http(s)</code> 網址。它會於伺服器端取得，並以
+      <code>Access-Control-Allow-Origin: *</code> 回傳，讓您的頁面能夠跨來源讀取。</p>
+
+    <div class="card">
+      <label for="url">目標網址（URL）</label>
+      <input type="text" id="url" placeholder="https://api.example.com/data" autocomplete="off" spellcheck="false" />
+
+      <div class="row">
+        <div>
+          <label for="method">HTTP 方法</label>
+          <select id="method">
+            <option>GET</option>
+            <option>POST</option>
+            <option>PUT</option>
+            <option>PATCH</option>
+            <option>DELETE</option>
+            <option>HEAD</option>
+          </select>
+        </div>
+        <div>
+          <label for="contentType">內容類型（Content-Type，用於請求主體）</label>
+          <input type="text" id="contentType" placeholder="application/json" />
+        </div>
+      </div>
+
+      <label for="body">請求主體（選填，適用於 POST/PUT/PATCH/DELETE）</label>
+      <textarea id="body" placeholder='{"key":"value"}'></textarea>
+
+      <div class="actions">
+        <button id="go">代理請求</button>
+        <span class="meta status" id="status"></span>
+      </div>
+
+      <div id="media"></div>
+      <pre id="out">結果將顯示在這裡……</pre>
+    </div>
+
+    <p class="foot">
+      端點：<code>/api/proxy?url=&lt;target&gt;&amp;method=&lt;GET|POST|…&gt;</code> ·
+      已封鎖私人／內部主機 · 回應上限 10&nbsp;MB ·
+      若要公開使用，請加上身分驗證或速率限制，以防遭濫用。
+    </p>
+  </div>
+
+  <script>
+    const API = window.location.origin + '/api/proxy';
+
+    const el = {
+      url: document.getElementById('url'),
+      method: document.getElementById('method'),
+      body: document.getElementById('body'),
+      contentType: document.getElementById('contentType'),
+      go: document.getElementById('go'),
+      status: document.getElementById('status'),
+      out: document.getElementById('out'),
+      media: document.getElementById('media'),
+    };
+
+    function setStatus(text, ok) {
+      el.status.textContent = text;
+      el.status.className = 'status ' + (ok === null ? '' : ok ? 'ok' : 'err');
+    }
+
+    async function run() {
+      const url = el.url.value.trim();
+      if (!url) { setStatus('請輸入網址', false); return; }
+
+      el.go.disabled = true;
+      el.media.innerHTML = '';
+      el.out.textContent = '載入中……';
+      setStatus('…', null);
+
+      const started = performance.now();
+      try {
+        const params = new URLSearchParams({
+          url,
+          method: el.method.value,
+        });
+        if (el.body.value.trim()) params.set('body', el.body.value);
+        if (el.contentType.value.trim()) params.set('contentType', el.contentType.value.trim());
+
+        const res = await fetch(API + '?' + params.toString());
+        const ms = Math.round(performance.now() - started);
+        const ct = (res.headers.get('content-type') || '').toLowerCase();
+        const status = res.status;
+
+        if (ct.includes('application/json')) {
+          const data = await res.json();
+          el.out.textContent = JSON.stringify(data, null, 2);
+        } else if (ct.startsWith('image/')) {
+          const blob = await res.blob();
+          const img = document.createElement('img');
+          img.src = URL.createObjectURL(blob);
+          img.alt = '跨域代理的影像';
+          el.media.appendChild(img);
+          el.out.textContent = '（影像已顯示於上方）';
+        } else if (ct.startsWith('video/')) {
+          const blob = await res.blob();
+          const vid = document.createElement('video');
+          vid.src = URL.createObjectURL(blob);
+          vid.controls = true;
+          el.media.appendChild(vid);
+          el.out.textContent = '（影片已顯示於上方）';
+        } else {
+          el.out.textContent = await res.text();
+        }
+
+        setStatus(status + ' · ' + (ct || '無內容類型') + ' · ' + ms + ' ms', res.ok);
+      } catch (e) {
+        el.out.textContent = '錯誤：' + (e && e.message ? e.message : String(e));
+        setStatus('請求失敗', false);
+      } finally {
+        el.go.disabled = false;
+      }
+    }
+
+    el.go.addEventListener('click', run);
+    el.url.addEventListener('keydown', (e) => { if (e.key === 'Enter') run(); });
+  </script>
+</body>
+</html>

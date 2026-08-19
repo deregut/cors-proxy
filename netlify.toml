@@ -1,0 +1,16 @@
+[build]
+  # Static site (the web UI) is served from `public/`.
+  publish = "public"
+
+[functions]
+  # Where the serverless functions live.
+  directory = "netlify/functions"
+  # Node.js runtime + esbuild bundler (no build step needed for the function).
+  node_bundler = "esbuild"
+
+# Expose the function at a clean /api/proxy route:
+#   /api/proxy -> /.netlify/functions/proxy
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200

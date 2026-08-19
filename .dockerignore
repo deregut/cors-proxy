@@ -1,0 +1,9 @@
+node_modules
+npm-debug.log
+cors-proxy.zip
+cors-proxy.tar.gz
+.git
+Dockerfile
+.dockerignore
+.env
+.env.local
