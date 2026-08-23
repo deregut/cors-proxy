@@ -6,9 +6,9 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "dev": "netlify dev",
+    "dev": "npx -y netlify-cli@latest dev",
     "start": "node server.js",
-    "deploy": "netlify deploy",
+    "deploy:netlify": "npx -y netlify-cli@latest deploy",
     "dev:workers": "wrangler dev",
     "deploy:workers": "wrangler deploy",
     "tail:workers": "wrangler tail"
@@ -17,7 +17,6 @@
     "node": ">=18"
   },
   "devDependencies": {
-    "netlify": "^17.0.0",
     "wrangler": "^4.0.0"
   },
   "keywords": [

@@ -53,10 +53,12 @@ cors-proxy/
 ├── public/
 │   └── index.html            # web UI (shared by every backend)
 ├── src/
-│   └── worker.js             # Cloudflare Worker (thin adapter over lib/proxy.js)
+│   └── worker.js             # (legacy path — see workers/proxy.js below)
 └── netlify/
     └── functions/
         └── proxy.js          # Netlify function (thin adapter over lib/proxy.js)
+└── workers/
+    └── proxy.js              # Cloudflare Worker (thin adapter over lib/proxy.js + assets)
 ```
 
 ## Scripts
@@ -65,14 +67,15 @@ cors-proxy/
 | -------------------- | ------------------------------------------------------------- |
 | `npm run dev`        | Run locally with the Netlify CLI (tests the function).        |
 | `npm run start`      | Run the standalone server (same code Docker uses), :3000.     |
-| `npm run deploy`     | Deploy to Netlify.                                            |
+| `npm run deploy:netlify` | Deploy to Netlify.                                      |
 | `npm run dev:workers`| Run the Cloudflare Worker locally (`wrangler dev`, :8787).    |
 | `npm run deploy:workers` | Deploy the Cloudflare Worker (`wrangler deploy`).          |
 | `npm run tail:workers`   | Tail live Worker logs (`wrangler tail`).                   |
 
 The standalone server (`server.js`) uses **no runtime dependencies** — only
-Node 18+ built-ins (`http` + global `fetch`). `netlify` is a devDependency,
-only needed for `npm run dev` / `npm run deploy`.
+Node 18+ built-ins (`http` + global `fetch`). The Netlify CLI is invoked via
+`npx` at dev/deploy time (no pinned `netlify` devDependency that would block
+other deploy pipelines).
 
 ## Run locally
 
@@ -80,7 +83,7 @@ Option A — standalone (simplest, no Netlify account needed):
 
 ```bash
 cd cors-proxy
-npm install        # installs the `netlify` CLI devDependency
+npm install        # installs `wrangler` (Workers CLI devDependency)
 npm run start      # → http://localhost:3000
 ```
 

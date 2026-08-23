@@ -1,12 +1,18 @@
 # Cloudflare Workers configuration
 # Docs: https://developers.cloudflare.com/workers/wrangler/
+#
+# The entry point is the existing `src/worker.js` — a thin adapter over the
+# shared `lib/proxy.js` (same SSRF guard, CORS, and 10 MB cap as the standalone
+# server and Netlify function). The `ASSETS` binding serves the shared web UI
+# from `./public`, so a single Workers deploy gets you both the API and the UI.
 
 name = "cors-proxy"
 main = "src/worker.js"
 compatibility_date = "2024-09-23"
+
 # Node.js compatibility so the shared lib/proxy.js (which uses Buffer) runs
 # unchanged in the Worker runtime.
-compatibility_flags = ["nodejs_compat"]
+node_compat = true
 
 # Serve the SHARED web UI (public/index.html) from the edge as static assets.
 # Using a binding makes the Worker the entry point for every request; the
